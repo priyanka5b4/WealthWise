@@ -1,0 +1,68 @@
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
+
+const transactionSchema = new Schema({
+  account_id: String,
+  account_owner: String || null,
+  amount: Number,
+  iso_currency_code: String,
+  unofficial_currency_code: String || null,
+  category: [String],
+  category_id: String,
+  check_number: String || null,
+  counterparties: [
+    {
+      name: String,
+      type: String,
+      logo_url: String,
+      website: String,
+      entity_id: String,
+      confidence_level: String,
+    },
+  ],
+  date: String,
+  datetime: String,
+  authorized_date: String,
+  authorized_datetime: String,
+  location: {
+    address: String || null,
+    city: String || null,
+    region: String || null,
+    postal_code: String || null,
+    country: String || null,
+    lat: Number || null,
+    lon: Number || null,
+    store_number: String || null,
+  },
+  name: String,
+  merchant_name: String,
+  merchant_entity_id: String,
+  logo_url: String,
+  website: String,
+  payment_meta: {
+    by_order_of: String || null,
+    payee: String || null,
+    payer: String || null,
+    payment_method: String || null,
+    payment_processor: String || null,
+    ppd_id: String || null,
+    reason: String || null,
+    reference_number: String || null,
+  },
+  payment_channel: String,
+  pending: Boolean,
+  pending_transaction_id: String || null,
+  personal_finance_category: {
+    primary: String,
+    detailed: String,
+    confidence_level: String,
+  },
+  personal_finance_category_icon_url: String,
+  transaction_id: String,
+  transaction_code: String || null,
+  transaction_type: String,
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now },
+});
+
+module.exports = mongoose.model('Transaction', transactionSchema);

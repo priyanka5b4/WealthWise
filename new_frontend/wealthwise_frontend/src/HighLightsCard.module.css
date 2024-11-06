@@ -1,0 +1,43 @@
+.highlightsCard{
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+    max-width: fit-content;
+    margin-left: "600px";
+}
+
+.highlightsContainer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    flex-direction: column;
+    margin-left: "20px";
+}
+
+.highlightItem {
+    /* width: 48%;
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-radius: 4px; */
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+}
+
+.highlightLabel {
+    /* font-weight: bold; */
+    font-size: 1.5em;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.highlightValue {
+    font-size: 18px;
+    color: #2684FF;
+    margin-left: 10px;
+    font-size: x-large;
+   
+}
