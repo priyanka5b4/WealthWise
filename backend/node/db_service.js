@@ -11,26 +11,31 @@ module.exports.InsertNewItemDetails = async (itemId, access_token) => {
     // Simulate async call to getAccountDetails with await
     const response = await plaidService.getAccountDetails(access_token);
 
+    // console.log('new Item response:', response.data.item);
     // Inserting item details
     const item = response.data.item;
     const newItem = new Item({
       access_token: access_token,
       item_id: itemId,
       institution_id: item.institution_id,
+      institution_name: item.institution_name,
       available_products: item.available_products,
       billed_products: item.billed_products,
       consent_expiration_time: item.consent_expiration_time,
       cursor: { default: null },
+      update_type: item.update_type,
+      webhook: item.webhook,
     });
 
-    console.log(newItem);
+    //console.log(newItem);
 
     await ItemService.createItem(newItem);
-    console.log(
-      `Item details inserted in mongo db for item ID: ${item.item_id}`,
-    );
+    // console.log(
+    //   `Item details inserted in mongo db for item ID: ${item.item_id}`,
+    // );
 
     const accounts = response.data.accounts; // Inserting account details
+    // console.log(accounts);
     for (const account of accounts) {
       const newAccount = new Account({
         item_id: itemId,
@@ -42,6 +47,7 @@ module.exports.InsertNewItemDetails = async (itemId, access_token) => {
         type: account.type,
         subtype: account.subtype,
         balances: account.balances,
+        accountType: 'Plaid',
       });
 
       await account_service.createAccount(newAccount);
@@ -110,10 +116,11 @@ module.exports.InsertTransactionDetails = async (access_token) => {
         access_token,
       );
       const data = transactionResponse.data;
+      //console.log(data);
       // Add this page of results
       added = added.concat(data.added);
       modified = modified.concat(data.modified);
-      removed = removed.concat(data.removed.transaction_id);
+      removed = removed.concat(data.removed);
       hasMore = data.has_more;
 
       // add new transactions in db
@@ -127,8 +134,9 @@ module.exports.InsertTransactionDetails = async (access_token) => {
       }
 
       // remove transactions from db
-      for (const transaction_id of removed) {
-        await removeTransaction(transaction_id);
+      for (const transaction of removed) {
+        // console.log('removed transaction', transaction);
+        await removeTransaction(transaction.transaction_id);
       }
 
       // Update cursor to the next cursor

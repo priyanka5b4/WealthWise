@@ -17,31 +17,9 @@ const accountSchema = new Schema({
     iso_currency_code: String,
     unofficial_currency_code: String,
   },
-  // owners: [{
-  //   names: [String],
-  //   phone_numbers: [{
-  //     data: String,
-  //     primary: Boolean,
-  //     type: String
-  //   }],
-  //   emails: [{
-  //     data: String,
-  //     primary: Boolean,
-  //     type: String
-  //   }],
-  //   addresses: [{
-  //     data: {
-  //       street: String,
-  //       city: String,
-  //       region: String,
-  //       postal_code: String,
-  //       country: String
-  //     },
-  //     primary: Boolean
-  //   }]
-  // }],
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now },
+  accountType: String,
 });
 
 module.exports = mongoose.model('Account', accountSchema);

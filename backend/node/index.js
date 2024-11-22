@@ -1,5 +1,6 @@
 const express = require('express');
 const app = express();
+const cors = require('cors');
 const bodyParser = require('body-parser');
 const plaid_service = require('./plaid_service');
 const db_service = require('./db_service');
@@ -7,6 +8,12 @@ const db = require('./core/dbLib/db.connect');
 const Item = require('./modules/Items/Item.model');
 const Account = require('./modules/Accounts/account.model');
 const Transaction = require('./modules/Transactions/transaction.model');
+const accountService = require('./modules/Accounts/account.service');
+const ItemService = require('./modules/Items/Item.service');
+const transactionRoutes = require('./modules/Transactions/transaction.routes');
+const {
+  getCategoryColorClasses,
+} = require('./modules/utils/getCategoryColors');
 db.connect(true);
 
 require('dotenv').config();
@@ -21,11 +28,19 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.listen(8000, () => {
   console.log('Server is running on port 8000');
 });
+app.use(cors());
+app.use('/api/dashboard', transactionRoutes);
 
 app.use('/api/transactions', async function (req, res, next) {
   try {
-    const transactions = await Transaction.find({});
-    res.json(transactions);
+    let transactions = await Transaction.find({});
+    const transactionWithColor = transactions.map((transaction) => ({
+      ...transaction.toObject(), // Convert mongoose doc to plain object
+      color: getCategoryColorClasses(
+        transaction.personal_finance_category.primary,
+      ),
+    }));
+    res.json(transactionWithColor);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -51,12 +66,28 @@ app.post('/api/create_link_token', async function (request, response, next) {
 app.post('/api/set_access_token', async function (request, response, next) {
   try {
     PUBLIC_TOKEN = request.body.public_token;
+    metadata = request.body.metadata;
+
+    //console.log(metadata);
+    // it the account is already linked
+    item_id = await ItemService.getItemID(metadata.institution.institution_id);
+    //console.log('item_id is', item_id);
+    if (item_id !== null) {
+      accounts = await accountService.getAllAccountsWIthId(item_id);
+
+      for (account in accounts) {
+        for (account2 in metadata.accounts) {
+          if (account2.name == account.name && account2.mask == account.mask) {
+            return response
+              .status(409)
+              .json({ error: 'Account Already Connected' });
+          }
+        }
+      }
+    }
     plaid_service.setAccessToken(PUBLIC_TOKEN).then(async (res) => {
-      // prettyPrintResponse(res.data);
-      // console.log(res.data);
       ACCESS_TOKEN = res.data.access_token;
 
-      // Inserting account details
       await db_service.InsertNewItemDetails(
         res.data.item_id,
         res.data.access_token,
@@ -64,7 +95,6 @@ app.post('/api/set_access_token', async function (request, response, next) {
 
       // inserting transaction details
       await db_service.InsertTransactionDetails(res.data.access_token);
-
       return response.json(res.data);
     });
   } catch (err) {
@@ -118,6 +148,16 @@ app.get('/api/institutions', async (req, res) => {
     res.json(institutionsWithAccounts);
   } catch (error) {
     console.error('Error in processing the /api/institutions endpoint:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+app.get('/api/accounts', async (req, res) => {
+  try {
+    const accounts = await accountService.getAllAccounts();
+    return res.json(accounts);
+  } catch (error) {
+    console.error('Error in processing the /api/accounts endpoint:', error);
     res.status(500).send('Internal Server Error');
   }
 });
