@@ -9,7 +9,7 @@ WealthWise is a comprehensive personal finance management application designed t
 1. **Plaid Link Integration**  
    Connect your bank accounts securely using Plaid Link.
 
-![Plaid Link Flow](assets/plaid_link_flow.png)
+![Plaid Link Flow](assets/plaid_link_flow1.png)
 
 **Plaid Link Flow:**
 
