@@ -23,7 +23,26 @@ async function fetchTransactions() {
     }
 }
 
-function formatTransactionData(transactions) {
+async function fetchAccounts() {
+    try {
+        const response = await fetch('http://localhost:8000/api/accounts');
+        if (!response.ok) {
+            throw new Error('Failed to fetch accounts');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching accounts:', error);
+        return [];
+    }
+}
+
+function formatTransactionData(transactions, accounts) {
+    // Create accounts lookup map
+    const accountsMap = accounts.reduce((map, account) => {
+        map[account.account_id] = account;
+        return map;
+    }, {});
+
     // Group transactions by account
     const accountTransactions = {};
     transactions.forEach(transaction => {
@@ -39,7 +58,11 @@ function formatTransactionData(transactions) {
     
     Object.entries(accountTransactions).forEach(([accountId, txns]) => {
         const accountTxns = txns as any[];
-        formattedData += `\nAccount ID: ${accountId}\n`;
+        const account = accountsMap[accountId];
+        const accountName = account ? `${account.name} (${account.type})` : accountId;
+        const institutionName = account?.institution?.name || 'Manual Account';
+        
+        formattedData += `\n${institutionName} - ${accountName}\n`;
         
         // Calculate account balance
         const balance = accountTxns.reduce((sum, tx) => sum + (tx.amount || 0), 0);
@@ -67,11 +90,14 @@ export async function POST(req: Request) {
         // Extract the `messages` from the body of the request
         const { messages } = await req.json();
 
-        // Fetch transactions
-        const transactions = await fetchTransactions();
+        // Fetch both transactions and accounts
+        const [transactions, accounts] = await Promise.all([
+            fetchTransactions(),
+            fetchAccounts()
+        ]);
 
-        // Format transactions data
-        const formattedTransactions = formatTransactionData(transactions);
+        // Format transactions data with account information
+        const formattedTransactions = formatTransactionData(transactions, accounts);
 
         // Add transactions context to system prompt
         const systemPromptWithTransactions = `${systemPrompt}\n\n${formattedTransactions}`;
