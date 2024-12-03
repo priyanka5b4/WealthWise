@@ -37,8 +37,10 @@ const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     const value = payload[0].value;
     const prevValue = payload[0].payload.previousValue;
-    const change = value - prevValue;
-    const percentChange = ((change / prevValue) * 100).toFixed(1);
+    const change = payload[0].payload.change || (value - prevValue);
+    const percentChange = prevValue !== 0 
+      ? ((change / Math.abs(prevValue)) * 100).toFixed(1)
+      : change > 0 ? '100' : '0';
     const date = formatDate(label);
 
     return (
@@ -46,9 +48,6 @@ const CustomTooltip = ({ active, payload, label }) => {
         <div className="text-sm text-gray-500">{date}</div>
         <div className="text-lg font-semibold mt-1">
           {formatCurrency(value)}
-          <span className="text-sm font-normal text-gray-400 ml-1">
-            .{(value % 1).toFixed(2).split(".")[1]}
-          </span>
         </div>
         <div
           className={`text-sm mt-1 ${
@@ -56,8 +55,7 @@ const CustomTooltip = ({ active, payload, label }) => {
           }`}
         >
           {change >= 0 ? "+" : ""}
-          {formatCurrency(change)} ({change >= 0 ? "+" : ""}
-          {percentChange}%)
+          {formatCurrency(change)} ({change >= 0 ? "+" : ""}{percentChange}%)
         </div>
       </div>
     );
@@ -84,13 +82,32 @@ const CustomXAxisTick = ({ x, y, payload, first, last }) => {
   );
 };
 
-const NetWorthChart = ({ data, timeframe = "1M" }) => {
-  const [hoveredData, setHoveredData] = useState(null);
+const NetWorthChart = ({ data = [], timeframe = "1M" }) => {
+  if (!data || data.length === 0) {
+    return (
+      <div className="w-full bg-white rounded-xl p-6 shadow-sm">
+        <div className="mb-6">
+          <div className="font-semibold">Net Worth</div>
+          <h2 className="text-2xl font-semibold">
+            {formatCurrency(0)}
+          </h2>
+          <div className="text-gray-500">No data available</div>
+        </div>
+      </div>
+    );
+  }
 
   const latestValue = data[data.length - 1]?.value || 0;
-  const previousValue = data[data.length - 2]?.value || 0;
+  const previousValue = data[data.length - 2]?.value || latestValue;
   const monthChange = latestValue - previousValue;
-  const monthPercentChange = ((monthChange / previousValue) * 100).toFixed(1);
+  const monthPercentChange = previousValue !== 0
+    ? ((monthChange / Math.abs(previousValue)) * 100).toFixed(1)
+    : monthChange > 0 ? '100' : '0';
+
+  const chartData = data.map((item) => ({
+    ...item,
+    previousValue: item.previousValue || 0,
+  }));
 
   return (
     <div className="w-full bg-white rounded-xl p-6 shadow-sm">
@@ -98,79 +115,49 @@ const NetWorthChart = ({ data, timeframe = "1M" }) => {
         <div className="font-semibold">Net Worth</div>
         <h2 className="text-2xl font-semibold">
           {formatCurrency(latestValue)}
-          <span className="text-base font-normal text-gray-400 ml-1">
-            .{(latestValue % 1).toFixed(2).split(".")[1]}
-          </span>
         </h2>
-        <p
+        <div
           className={`text-sm ${
             monthChange >= 0 ? "text-green-500" : "text-red-500"
           }`}
         >
           {monthChange >= 0 ? "+" : ""}
           {formatCurrency(monthChange)} ({monthChange >= 0 ? "+" : ""}
-          {monthPercentChange}%) vs last month
-        </p>
+          {monthPercentChange}%)
+        </div>
       </div>
 
-      <div className="h-64">
+      <div className="h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
-            data={data}
-            margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
-            onMouseMove={(e) => {
-              if (e?.activePayload) {
-                setHoveredData(e.activePayload[0]?.payload);
-              }
-            }}
-            onMouseLeave={() => setHoveredData(null)}
+            data={chartData}
+            margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
           >
-            <defs>
-              <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10B981" stopOpacity={0.1} />
-                <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-              </linearGradient>
-            </defs>
             <XAxis
               dataKey="date"
-              axisLine={false}
-              tickLine={false}
-              tick={(props) => (
+              tickFormatter={formatAxisDate}
+              tick={({ x, y, payload, index }) => (
                 <CustomXAxisTick
-                  {...props}
-                  first={props.index === 0}
-                  last={props.index === data.length - 1}
+                  x={x}
+                  y={y}
+                  payload={payload}
+                  first={index === 0}
+                  last={index === chartData.length - 1}
                 />
               )}
-              interval={0}
             />
             <YAxis
-              axisLine={false}
-              tickLine={false}
-              tick={false}
-              domain={["auto", "auto"]}
+              tickFormatter={formatCurrency}
+              width={80}
+              tick={{ fill: "#9CA3AF" }}
             />
-            <Tooltip
-              content={<CustomTooltip />}
-              cursor={{
-                stroke: "#10B981",
-                strokeWidth: 1,
-                strokeDasharray: "5 5",
-              }}
-            />
+            <Tooltip content={<CustomTooltip />} />
             <Line
-              type="linear"
+              type="monotone"
               dataKey="value"
-              stroke="#10B981"
+              stroke="#6366F1"
               strokeWidth={2}
               dot={false}
-              activeDot={{
-                r: 6,
-                stroke: "#10B981",
-                strokeWidth: 2,
-                fill: "#FFFFFF",
-              }}
-              fill="url(#colorValue)"
             />
           </LineChart>
         </ResponsiveContainer>

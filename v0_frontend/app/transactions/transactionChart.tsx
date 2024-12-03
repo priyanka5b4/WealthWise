@@ -1,191 +1,150 @@
-import { useState, useMemo } from "react";
+import React, { useMemo } from 'react';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from "recharts";
-
-type TimeRange = "week" | "month" | "2months" | "5months" | "year" | "2years";
-
-interface Transaction {
-  date: string;
-  amount: number;
-}
-
-interface ChartDataPoint {
-  date: Date;
-  xAxisLabel: string;
-  income: number;
-  expenses: number;
-}
+} from 'recharts';
+import { format, subDays, subMonths, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
+import { Transaction } from '../types/transaction';
 
 interface TransactionChartProps {
   transactions: Transaction[];
+  timeframe?: 'week' | 'month' | 'year';
 }
 
-export const TransactionChart = ({ transactions }: TransactionChartProps) => {
-  const [selectedRange, setSelectedRange] = useState<TimeRange>("month");
+interface ChartData {
+  date: string;
+  rawDate: Date;
+  income: number;
+  expenses: number;
+  net: number;
+}
 
-  const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-
-  const timeRanges = [
-    { value: "week", label: "Past Week" },
-    { value: "month", label: "Past Month" },
-    { value: "2months", label: "Past 2 Months" },
-    { value: "5months", label: "Past 5 Months" },
-    { value: "year", label: "Past Year" },
-    { value: "2years", label: "Past 2 Years" },
-  ] as const;
-
-  const getDateRange = (range: TimeRange): Date => {
+const TransactionChart: React.FC<TransactionChartProps> = ({ transactions, timeframe = 'month' }) => {
+  const chartData = useMemo(() => {
     const now = new Date();
-    const past = new Date();
+    let startDate: Date;
+    let dateFormat: string;
 
-    switch (range) {
-      case "week":
-        past.setDate(now.getDate() - 7);
+    // Determine date range based on timeframe
+    switch (timeframe) {
+      case 'week':
+        startDate = subDays(now, 7);
+        dateFormat = 'EEE';
         break;
-      case "month":
-        past.setMonth(now.getMonth() - 1);
+      case 'year':
+        startDate = subMonths(now, 12);
+        dateFormat = 'MMM';
         break;
-      case "2months":
-        past.setMonth(now.getMonth() - 2);
-        break;
-      case "5months":
-        past.setMonth(now.getMonth() - 5);
-        break;
-      case "year":
-        past.setFullYear(now.getFullYear() - 1);
-        break;
-      case "2years":
-        past.setFullYear(now.getFullYear() - 2);
-        break;
+      case 'month':
+      default:
+        startDate = startOfMonth(now);
+        dateFormat = 'dd MMM';
     }
-    return past;
+
+    // Create a map of all dates in the range
+    const dateRange = eachDayOfInterval({
+      start: startDate,
+      end: now
+    });
+
+    const initialData: { [key: string]: ChartData } = {};
+    dateRange.forEach(date => {
+      const dateKey = format(date, dateFormat);
+      initialData[dateKey] = {
+        date: dateKey,
+        rawDate: date,
+        income: 0,
+        expenses: 0,
+        net: 0,
+      };
+    });
+    
+    // Process transactions
+    transactions.forEach((transaction) => {
+      const date = new Date(transaction.date);
+      if (date < startDate || date > now) return;
+
+      const dateKey = format(date, dateFormat);
+      if (!initialData[dateKey]) return;
+
+      const amount = Math.abs(transaction.amount);
+      if (transaction.amount > 0) {
+        initialData[dateKey].income += amount;
+        initialData[dateKey].net += amount;
+      } else {
+        initialData[dateKey].expenses += amount;
+        initialData[dateKey].net -= amount;
+      }
+    });
+
+    // Convert to array and sort by date
+    return Object.values(initialData).sort((a, b) => 
+      a.rawDate.getTime() - b.rawDate.getTime()
+    );
+  }, [transactions, timeframe]);
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
   };
 
-  const chartData = useMemo(() => {
-    const startDate = getDateRange(selectedRange);
-
-    const filteredTransactions = transactions.filter(
-      (t) => new Date(t.date) >= startDate
-    );
-
-    const monthlyData = filteredTransactions.reduce<
-      Record<string, ChartDataPoint>
-    >((acc, t) => {
-      const date = new Date(t.date);
-      const key = `${date.getFullYear()}-${date.getMonth()}`;
-
-      if (!acc[key]) {
-        acc[key] = {
-          date: date,
-          xAxisLabel: `${months[date.getMonth()]} ${date.getFullYear()}`,
-          income: 0,
-          expenses: 0,
-        };
-      }
-
-      if (t.amount > 0) {
-        acc[key].income += t.amount;
-      } else {
-        acc[key].expenses += Math.abs(t.amount);
-      }
-      return acc;
-    }, {});
-
-    return Object.values(monthlyData).sort(
-      (a, b) => a.date.getTime() - b.date.getTime()
-    );
-  }, [transactions, selectedRange, months]);
-
   return (
-    <Card className="mb-6">
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <CardTitle>Transaction Trend</CardTitle>
-          <Select
-            value={selectedRange}
-            onValueChange={(value: TimeRange) => setSelectedRange(value)}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select time range" />
-            </SelectTrigger>
-            <SelectContent>
-              {timeRanges.map((range) => (
-                <SelectItem key={range.value} value={range.value}>
-                  {range.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="h-[400px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="xAxisLabel"
-                interval={0}
-                angle={-45}
-                textAnchor="end"
-                height={80}
-              />
-              <YAxis tickFormatter={(value) => `$${value.toLocaleString()}`} />
-              <Tooltip
-                formatter={(value: number) => `$${value.toLocaleString()}`}
-                labelFormatter={(label: string) => label}
-              />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="income"
-                stroke="#22c55e"
-                strokeWidth={2}
-                dot={true}
-                name="Income"
-              />
-              <Line
-                type="monotone"
-                dataKey="expenses"
-                stroke="#ef4444"
-                strokeWidth={2}
-                dot={true}
-                name="Expenses"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="w-full h-[400px] bg-white rounded-lg shadow-sm p-4">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+          <XAxis 
+            dataKey="date"
+            tick={{ fontSize: 12 }}
+            tickLine={false}
+            interval="preserveStartEnd"
+          />
+          <YAxis
+            tickFormatter={formatCurrency}
+            tick={{ fontSize: 12 }}
+            tickLine={false}
+            axisLine={false}
+          />
+          <Tooltip
+            formatter={(value: number) => formatCurrency(value)}
+            contentStyle={{
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              border: '1px solid #e2e8f0',
+              borderRadius: '0.5rem',
+            }}
+          />
+          <Legend />
+          <Bar 
+            dataKey="income" 
+            fill="#10B981" 
+            radius={[4, 4, 0, 0]}
+            name="Income"
+          />
+          <Bar 
+            dataKey="expenses" 
+            fill="#EF4444" 
+            radius={[4, 4, 0, 0]}
+            name="Expenses"
+          />
+          <Bar 
+            dataKey="net" 
+            fill="#6366F1" 
+            radius={[4, 4, 0, 0]}
+            name="Net"
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
 };
 

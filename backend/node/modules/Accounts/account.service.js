@@ -47,3 +47,35 @@ module.exports.getAllAccounts = async () => {
     throw new Error(`Error getting account details`);
   }
 };
+
+module.exports.deleteAccount = async (accountId) => {
+  try {
+    console.log('Searching for account with ID:', accountId);
+    
+    // Find the account first to ensure it exists
+    const account = await Account.findOne({ 
+      $or: [
+        { account_id: accountId },
+        { persistent_account_id: accountId }
+      ]
+    });
+    
+    console.log('Account found:', account);
+    
+    if (!account) {
+      throw new Error(`Account not found with ID: ${accountId}`);
+    }
+
+    // Delete all associated transactions
+    const Transaction = require('../Transactions/transaction.model');
+    await Transaction.deleteMany({ account_id: account.account_id });
+
+    // Delete the account
+    await Account.deleteOne({ account_id: account.account_id });
+
+    return { success: true, message: 'Account and associated transactions deleted successfully' };
+  } catch (err) {
+    console.error('Error in deleteAccount service:', err);
+    throw err;
+  }
+};

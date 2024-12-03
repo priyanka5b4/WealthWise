@@ -1,0 +1,16 @@
+date,amount,name,category,merchant_name,iso_currency_code
+2024-01-15,-45.99,Grocery Shopping,groceries,Whole Foods Market,USD
+2024-01-15,-9.99,Netflix Subscription,entertainment,Netflix,USD
+2024-01-16,-35.50,Gas Station,transportation,Shell,USD
+2024-01-17,-12.50,Coffee Shop,food,Starbucks,USD
+2024-01-17,2500.00,Salary Deposit,income,Employer Inc,USD
+2024-01-18,-89.99,Internet Bill,utilities,Comcast,USD
+2024-01-19,-25.00,Restaurant Dinner,dining,Local Restaurant,USD
+2024-01-20,-150.00,Electricity Bill,utilities,PG&E,USD
+2024-01-21,-60.00,Phone Bill,utilities,AT&T,USD
+2024-01-22,-15.99,Online Purchase,shopping,Amazon,USD
+2024-01-23,-42.50,Pharmacy,health,CVS Pharmacy,USD
+2024-01-24,-8.99,Music Subscription,entertainment,Spotify,USD
+2024-01-25,-75.00,Haircut,personal_care,Style Salon,USD
+2024-01-26,-22.99,Book Purchase,entertainment,Barnes & Noble,USD
+2024-01-27,-55.00,Gym Membership,health,24 Hour Fitness,USD

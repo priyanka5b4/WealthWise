@@ -11,9 +11,9 @@ const Transaction = require('./modules/Transactions/transaction.model');
 const accountService = require('./modules/Accounts/account.service');
 const ItemService = require('./modules/Items/Item.service');
 const transactionRoutes = require('./modules/Transactions/transaction.routes');
-const {
-  getCategoryColorClasses,
-} = require('./modules/utils/getCategoryColors');
+const transactionBulkRoutes = require('./modules/Transactions/transaction.bulk.routes');
+const accountRoutes = require('./modules/Accounts/account.routes');
+
 db.connect(true);
 
 require('dotenv').config();
@@ -25,26 +25,12 @@ let ACCESS_TOKEN = null;
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.listen(8000, () => {
-  console.log('Server is running on port 8000');
-});
 app.use(cors());
 app.use('/api/dashboard', transactionRoutes);
+app.use('/api/accounts', accountRoutes);
+app.use('/api/transactions', transactionBulkRoutes);
 
-app.use('/api/transactions', async function (req, res, next) {
-  try {
-    let transactions = await Transaction.find({});
-    const transactionWithColor = transactions.map((transaction) => ({
-      ...transaction.toObject(), // Convert mongoose doc to plain object
-      color: getCategoryColorClasses(
-        transaction.personal_finance_category.primary,
-      ),
-    }));
-    res.json(transactionWithColor);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+
 
 app.post('/api/info', function (request, response, next) {
   response.json({
@@ -65,40 +51,90 @@ app.post('/api/create_link_token', async function (request, response, next) {
 
 app.post('/api/set_access_token', async function (request, response, next) {
   try {
-    PUBLIC_TOKEN = request.body.public_token;
-    metadata = request.body.metadata;
+    const PUBLIC_TOKEN = request.body.public_token;
+    const metadata = request.body.metadata;
 
-    //console.log(metadata);
-    // it the account is already linked
-    item_id = await ItemService.getItemID(metadata.institution.institution_id);
-    //console.log('item_id is', item_id);
-    if (item_id !== null) {
-      accounts = await accountService.getAllAccountsWIthId(item_id);
+    console.log('Received metadata:', metadata);
 
-      for (account in accounts) {
-        for (account2 in metadata.accounts) {
-          if (account2.name == account.name && account2.mask == account.mask) {
-            return response
-              .status(409)
-              .json({ error: 'Account Already Connected' });
-          }
-        }
-      }
+    // First check if this institution is already connected
+    const existingItem = await Item.findOne({ 
+      institution_id: metadata.institution.institution_id,
+      // Add a status check to allow reconnecting closed/invalid items
+      status: { $nin: ['CLOSED', 'INVALID'] }
+    });
+
+    if (existingItem) {
+      console.log('Institution already connected:', existingItem);
+      return response.status(409).json({ 
+        error: 'This bank account is already connected. Please unlink the existing connection before adding it again.' 
+      });
     }
-    plaid_service.setAccessToken(PUBLIC_TOKEN).then(async (res) => {
-      ACCESS_TOKEN = res.data.access_token;
 
-      await db_service.InsertNewItemDetails(
-        res.data.item_id,
-        res.data.access_token,
+    // Exchange public token for access token
+    const tokenResponse = await plaid_service.setAccessToken(PUBLIC_TOKEN);
+    const ACCESS_TOKEN = tokenResponse.data.access_token;
+    const ITEM_ID = tokenResponse.data.item_id;
+
+    console.log('Token exchange successful:', { item_id: ITEM_ID });
+
+    try {
+      // Save item details
+      await db_service.InsertNewItemDetails(ITEM_ID, ACCESS_TOKEN);
+
+      // Get accounts from Plaid
+      const plaidAccounts = await plaid_service.getAccounts(ACCESS_TOKEN);
+      console.log('Fetched accounts from Plaid:', plaidAccounts);
+
+      // Save accounts
+      const savedAccounts = await Promise.all(
+        plaidAccounts.accounts.map(async (account) => {
+          const accountData = {
+            item_id: ITEM_ID,
+            account_id: account.account_id,
+            persistent_account_id: account.persistent_account_id || account.account_id,
+            name: account.name,
+            official_name: account.official_name,
+            type: account.type.toLowerCase(),
+            subtype: account.subtype?.toLowerCase(),
+            mask: account.mask,
+            balances: {
+              available: account.balances.available || 0,
+              current: account.balances.current || 0,
+              limit: account.balances.limit || null,
+              previous: account.balances.current || 0,
+              iso_currency_code: account.balances.iso_currency_code || 'USD',
+              unofficial_currency_code: account.balances.unofficial_currency_code
+            },
+            connection_type: 'plaid',
+            status: 'active'
+          };
+          
+          return await Account.findOneAndUpdate(
+            { account_id: account.account_id },
+            accountData,
+            { upsert: true, new: true }
+          );
+        })
       );
 
-      // inserting transaction details
-      await db_service.InsertTransactionDetails(res.data.access_token);
-      return response.json(res.data);
-    });
+      console.log('Saved accounts:', savedAccounts);
+
+      // Get initial transactions
+      await db_service.InsertTransactionDetails(ACCESS_TOKEN);
+
+      // Return success response
+      return response.json({
+        access_token: ACCESS_TOKEN,
+        item_id: ITEM_ID,
+        accounts: savedAccounts
+      });
+    } catch (err) {
+      console.error('Error in set_access_token:', err);
+      return response.status(500).json({ error: err.message });
+    }
   } catch (err) {
-    console.log(err);
+    console.error('Error in set_access_token:', err);
+    return response.status(500).json({ error: err.message });
   }
 });
 
@@ -152,12 +188,86 @@ app.get('/api/institutions', async (req, res) => {
   }
 });
 
-app.get('/api/accounts', async (req, res) => {
+
+
+// In your backend API routes
+app.post('/api/sync_accounts', async (req, res) => {
   try {
-    const accounts = await accountService.getAllAccounts();
-    return res.json(accounts);
+    const { item_id, access_token, institution, accounts } = req.body;
+    
+    // 1. Get accounts from Plaid
+    const plaidResponse = await plaidClient.accountsGet({
+      access_token: access_token
+    });
+    
+    // 2. Transform and save accounts
+    const savedAccounts = await Promise.all(
+      plaidResponse.data.accounts.map(async (account) => {
+        const accountData = {
+          item_id,
+          account_id: account.account_id,
+          name: account.name,
+          official_name: account.official_name,
+          type: account.type,
+          subtype: account.subtype,
+          mask: account.mask,
+          balances: account.balances,
+          connection_type: 'plaid',
+          status: 'active'
+        };
+        
+        // Save to your database
+        return await Account.findOneAndUpdate(
+          { account_id: account.account_id },
+          accountData,
+          { upsert: true, new: true }
+        );
+      })
+    );
+    
+    res.json(savedAccounts);
   } catch (error) {
-    console.error('Error in processing the /api/accounts endpoint:', error);
-    res.status(500).send('Internal Server Error');
+    console.error('Error syncing accounts:', error);
+    res.status(500).json({ error: error.message });
   }
+});
+app.post('/api/plaid/accounts', async (req, res) => {
+  try {
+    const { access_token } = req.body;
+    const response = await plaidClient.accountsGet({ access_token });
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error fetching Plaid accounts:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/institutions/:institution_id', async (req, res) => {
+  try {
+    const { institution_id } = req.params;
+    
+    // Find the item for this institution
+    const item = await Item.findOne({ institution_id });
+    if (!item) {
+      return res.status(404).json({ error: 'Institution not found' });
+    }
+
+    // Delete all accounts associated with this item
+    await Account.deleteMany({ item_id: item.item_id });
+
+    // Delete all transactions associated with these accounts
+    await Transaction.deleteMany({ item_id: item.item_id });
+
+    // Delete the item itself
+    await Item.deleteOne({ institution_id });
+
+    res.json({ message: 'Institution and all associated data deleted successfully' });
+  } catch (error) {
+    console.error('Error unlinking institution:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.listen(8000, () => {
+  console.log('Server is running on port 8000');
 });

@@ -22,20 +22,47 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import TransactionChart from "./transactionChart";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
+import { format } from "date-fns";
 
 // TransactionFilters component
-const TransactionFilters = ({ onFilterChange, onSortChange }) => {
+const TransactionFilters = ({ onFilterChange, onSortChange, searchTerm, onClearSearch, selectedCategory, onCategoryChange, categories }) => {
   return (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 mb-4">
-      <div className="flex items-center space-x-2">
-        <Input
-          placeholder="Search transactions"
-          className="w-full sm:w-auto"
-          onChange={(e) => onFilterChange(e.target.value)}
-        />
-        <Button variant="outline" size="icon">
-          <Search className="h-4 w-4" />
-        </Button>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+        <div className="relative w-full sm:w-auto">
+          <Input
+            placeholder="Search transactions"
+            className="pr-8"
+            value={searchTerm}
+            onChange={(e) => onFilterChange(e.target.value)}
+          />
+          {searchTerm && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+              onClick={onClearSearch}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+        <Select value={selectedCategory} onValueChange={onCategoryChange}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filter by category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            {categories.map((category) => (
+              <SelectItem key={category} value={category}>
+                {category}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <Select onValueChange={onSortChange}>
         <SelectTrigger className="w-[180px]">
@@ -54,6 +81,17 @@ const TransactionFilters = ({ onFilterChange, onSortChange }) => {
 
 // TransactionItem component
 const TransactionItem = ({ transaction }) => {
+  // Format the date
+  const formatTransactionDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return format(date, "MMM d, yyyy 'at' h:mm a");
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return dateString; // Return original string if formatting fails
+    }
+  };
+
   return (
     <div className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg">
       <div className="flex items-center space-x-4">
@@ -70,7 +108,9 @@ const TransactionItem = ({ transaction }) => {
         </div>
         <div>
           <div className="font-medium">{transaction.name}</div>
-          <div className="text-sm text-gray-500">{transaction.date}</div>
+          <div className="text-sm text-gray-500">
+            {formatTransactionDate(transaction.datetime || transaction.date)}
+          </div>
         </div>
       </div>
       <div className="flex items-center space-x-4">
@@ -203,6 +243,10 @@ export default function TransactionsPage() {
   const getTransactionService = GetTransactionservice();
   const [loading, setIsLoading] = useState(true);
   const [filteredTransactions, setFilteredTransactions] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [categories, setCategories] = useState([]);
+
   useEffect(() => {
     const uuid =
       getTransactionService.registerTransactionsListener(setTransactions);
@@ -230,6 +274,12 @@ export default function TransactionsPage() {
           .includes(searchTerm.toLowerCase())
     );
     setFilteredTransactions(filtered);
+    setSearchTerm(searchTerm);
+  };
+
+  const handleClearSearch = () => {
+    setFilteredTransactions(transactions);
+    setSearchTerm("");
   };
 
   const handleSortChange = (sortOption) => {
@@ -253,6 +303,26 @@ export default function TransactionsPage() {
     setFilteredTransactions(sorted);
   };
 
+  const handleCategoryChange = (category) => {
+    setSelectedCategory(category);
+    if (category === "all") {
+      setFilteredTransactions(transactions);
+    } else {
+      const filtered = transactions.filter(
+        (transaction) =>
+          transaction.personal_finance_category.primary === category
+      );
+      setFilteredTransactions(filtered);
+    }
+  };
+
+  useEffect(() => {
+    const categories = Array.from(
+      new Set(transactions.map((t) => t.personal_finance_category.primary))
+    );
+    setCategories(categories);
+  }, [transactions]);
+
   return (
     <div className="container flex flex-col mx-auto p-6 h-screen overflow-auto">
       <h1 className="text-3xl font-bold mb-6">Transactions</h1>
@@ -270,6 +340,11 @@ export default function TransactionsPage() {
               <TransactionFilters
                 onFilterChange={handleFilterChange}
                 onSortChange={handleSortChange}
+                searchTerm={searchTerm}
+                onClearSearch={handleClearSearch}
+                selectedCategory={selectedCategory}
+                onCategoryChange={handleCategoryChange}
+                categories={categories}
               />
               <TransactionList transactions={filteredTransactions} />
             </CardContent>

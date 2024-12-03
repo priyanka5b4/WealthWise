@@ -9,6 +9,12 @@ const itemSchema = new Schema({
   available_products: [String],
   billed_products: [String],
   consent_expiration_time: Date,
+  status: { 
+    type: String, 
+    enum: ['ACTIVE', 'CLOSED', 'INVALID', 'PENDING'],
+    default: 'ACTIVE',
+    index: true
+  },
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now },
   cursor: { type: String, default: null },

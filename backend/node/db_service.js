@@ -1,7 +1,7 @@
 const account_service = require('./modules/Accounts/account.service');
 const Account = require('./modules/Accounts/account.model');
 const Item = require('./modules/Items/Item.model');
-const ItemService = require('./modules/Items/item.service');
+const ItemService = require('./modules/Items/Item.service');
 const Transaction = require('./modules/Transactions/transaction.model');
 const TransactionService = require('./modules/Transactions/transaction.service');
 const plaidService = require('./plaid_service');
@@ -22,6 +22,7 @@ module.exports.InsertNewItemDetails = async (itemId, access_token) => {
       available_products: item.available_products,
       billed_products: item.billed_products,
       consent_expiration_time: item.consent_expiration_time,
+      status: 'ACTIVE',
       cursor: { default: null },
       update_type: item.update_type,
       webhook: item.webhook,
@@ -44,10 +45,18 @@ module.exports.InsertNewItemDetails = async (itemId, access_token) => {
         mask: account.mask,
         name: account.name,
         official_name: account.official_name,
-        type: account.type,
-        subtype: account.subtype,
-        balances: account.balances,
-        accountType: 'Plaid',
+        type: account.type.toLowerCase(),
+        subtype: account.subtype?.toLowerCase(),
+        balances: {
+          available: account.balances.available || 0,
+          current: account.balances.current || 0,
+          limit: account.balances.limit || null,
+          previous: account.balances.current || 0,
+          iso_currency_code: account.balances.iso_currency_code || 'USD',
+          unofficial_currency_code: account.balances.unofficial_currency_code
+        },
+        connection_type: 'plaid',
+        status: 'active'
       });
 
       await account_service.createAccount(newAccount);

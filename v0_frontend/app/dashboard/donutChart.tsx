@@ -11,17 +11,20 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-// const incomeData = [
-//   { accountName: "Bank A", amount: 7514.22 },
-//   { accountName: "Bank B", amount: 387.11 },
-//   { accountName: "Investment Firm", amount: 509.78 },
-// ];
+interface TransactionData {
+  category: string;
+  amount: number;
+}
 
-// const expensesData = [
-//   { accountName: "Bank A", amount: 5844.11 },
-//   { accountName: "Bank B", amount: 124.81 },
-//   { accountName: "Credit Card", amount: 143.32 },
-// ];
+interface FinancialData {
+  categories: TransactionData[];
+  total: number;
+}
+
+interface DonutChartProps {
+  income: FinancialData;
+  expenses: FinancialData;
+}
 
 const CustomLabel = ({
   cx,
@@ -31,11 +34,11 @@ const CustomLabel = ({
   outerRadius,
   percent,
   index,
-  accountName,
+  category,
   amount,
 }) => {
   const RADIAN = Math.PI / 180;
-  const radius = outerRadius * 1.2; // Increase radius to position label further
+  const radius = outerRadius * 1.2;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
@@ -48,7 +51,7 @@ const CustomLabel = ({
       dominantBaseline="central"
       className="text-sm"
     >
-      {`${accountName}: $${amount.toLocaleString()}`}
+      {`${category}: $${amount.toLocaleString()}`}
     </text>
   );
 };
@@ -65,7 +68,7 @@ const DonutChart = ({ data, COLORS }) => (
         fill="#8884d8"
         paddingAngle={5}
         dataKey="amount"
-        nameKey="accountName"
+        nameKey="category"
         label={CustomLabel}
         labelLine={true}
       >
@@ -73,30 +76,48 @@ const DonutChart = ({ data, COLORS }) => (
           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
         ))}
       </Pie>
-      <Tooltip formatter={(amount) => `$${amount.toLocaleString()}`} />
+      <Tooltip 
+        formatter={(amount) => `$${amount.toLocaleString()}`}
+        labelFormatter={(category) => category}
+      />
     </PieChart>
   </ResponsiveContainer>
 );
 
 export default function IncomeExpensesDonutCharts({
-  incomeData,
-  expensesData,
-}) {
-  const getColors = () => {
+  income,
+  expenses,
+}: DonutChartProps) {
+  if (!income?.categories || !expenses?.categories) {
+    return (
+      <Card className="col-span-1">
+        <CardHeader className="pb-4">
+          <CardTitle>Income & Expenses by Category</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center text-gray-500">No data available</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const getColors = (data) => {
     const colors = [];
-    const len = incomeData.length;
+    const len = data.length;
     for (let i = 0; i < len; i++) {
-      const color = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
-      colors.push(color);
+      const hue = (i * 360) / len;
+      colors.push(`hsl(${hue}, 70%, 50%)`);
     }
     return colors;
   };
 
-  const COLORS = getColors();
+  const incomeColors = getColors(income.categories);
+  const expenseColors = getColors(expenses.categories);
+
   return (
     <Card className="col-span-1">
       <CardHeader className="pb-4">
-        <CardTitle>Income & Expenses by Institution</CardTitle>
+        <CardTitle>Income & Expenses by Category</CardTitle>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="income" className="w-full">
@@ -105,28 +126,22 @@ export default function IncomeExpensesDonutCharts({
             <TabsTrigger value="expenses">Expenses</TabsTrigger>
           </TabsList>
           <TabsContent value="income">
-            <DonutChart data={incomeData} COLORS={COLORS} />
+            <DonutChart data={income.categories} COLORS={incomeColors} />
             <div className="mt-2 flex items-center justify-center">
               <div className="text-center">
                 <span className="text-xl font-bold">
-                  $
-                  {incomeData
-                    .reduce((sum, item) => sum + item.amount, 0)
-                    .toFixed(2)}
+                  ${income.total.toLocaleString()}
                 </span>
                 <p className="text-sm text-muted-foreground">Total Income</p>
               </div>
             </div>
           </TabsContent>
           <TabsContent value="expenses">
-            <DonutChart data={expensesData} COLORS={COLORS} />
+            <DonutChart data={expenses.categories} COLORS={expenseColors} />
             <div className="mt-2 flex items-center justify-center">
               <div className="text-center">
                 <span className="text-xl font-bold">
-                  $
-                  {expensesData
-                    .reduce((sum, item) => sum + item.amount, 0)
-                    .toFixed(2)}
+                  ${expenses.total.toLocaleString()}
                 </span>
                 <p className="text-sm text-muted-foreground">Total Expenses</p>
               </div>

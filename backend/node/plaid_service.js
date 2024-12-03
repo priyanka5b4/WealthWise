@@ -161,3 +161,15 @@ exports.getInstitutionDetailsById = async (institutionID) => {
     console.log(err);
   }
 };
+
+exports.getAccounts = async (access_token) => {
+  try {
+    const response = await client.accountsGet({
+      access_token: access_token
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error getting accounts from Plaid:', error);
+    throw error;
+  }
+};

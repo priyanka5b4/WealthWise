@@ -1,11 +1,10 @@
-"use cleint";
+"use client";
 import { useState, useEffect } from "react";
 import {
   Building2,
   Briefcase,
   CreditCard,
   Wallet,
-  Bank,
   HelpCircle,
 } from "lucide-react";
 import {
@@ -33,7 +32,7 @@ export const AccountTypeConfig = {
   DEPOSITORY: {
     color: "text-blue-600",
     bgColor: "bg-blue-100",
-    icon: Bank,
+    icon: Building2,
   },
   LOAN: {
     color: "text-orange-600",
@@ -56,6 +55,47 @@ export const AccountTypeConfig = {
 const getAccountTypeConfig = (Transactiontype: string) => {
   const normalizedType = Transactiontype.toUpperCase();
   return AccountTypeConfig[normalizedType] || AccountTypeConfig.OTHER;
+};
+
+const isPositiveTransaction = (transaction) => {
+  const amount = transaction.amount;
+  const category = transaction.personal_finance_category?.primary;
+  
+  // Special handling for specific categories
+  if (category === 'INCOME' || category === 'TRANSFER_IN') {
+    return true;
+  }
+  
+  if (category === 'TRANSFER_OUT' || 
+      category === 'LOAN_PAYMENTS' || 
+      category === 'FOOD_AND_DRINK' ||
+      category === 'SHOPPING') {
+    return false;
+  }
+  
+  // For credit accounts
+  if (transaction.account_type === 'credit') {
+    return amount < 0;  // Negative means payment/refund (positive for display)
+  }
+  
+  // For depository accounts (checking, savings)
+  if (transaction.account_type === 'depository') {
+    return amount < 0;  // Negative means money coming in (positive for display)
+  }
+  
+  // For investment accounts
+  if (transaction.account_type === 'investment') {
+    return transaction.transaction_type === 'income';
+  }
+  
+  // Default case - negative means money in (positive for display)
+  return amount < 0;
+};
+
+const formatTransactionAmount = (transaction) => {
+  const amount = Math.abs(transaction.amount);
+  const isPositive = isPositiveTransaction(transaction);
+  return `${isPositive ? '+' : '-'}$${amount.toFixed(2)}`;
 };
 
 // Usage in component
@@ -117,13 +157,12 @@ export default function RecentTransactions() {
                   <div className="flex-1 text-right">
                     <div
                       className={`text-sm font-medium ${
-                        transaction.amount > 0
+                        isPositiveTransaction(transaction)
                           ? "text-green-600"
                           : "text-red-600"
                       }`}
                     >
-                      {transaction.amount > 0 ? "+" : ""}
-                      {transaction.amount.toFixed(2)}
+                      {formatTransactionAmount(transaction)}
                     </div>
                     <p className="text-xs">{transaction.authorized_date}</p>
                   </div>
