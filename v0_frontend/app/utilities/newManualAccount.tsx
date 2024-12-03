@@ -144,11 +144,15 @@ const NewManualAccountDialog = ({ ButtonText }) => {
       
       // Add account details
       const accountData = {
-        accountType,
-        bankName: (event.target as any).name.value,
-        accountNumber: (event.target as any).AccountName.value,
-        balance: (event.target as any).balance?.value ? parseFloat((event.target as any).balance.value) : undefined,
-        creditLimit: (event.target as any).credit?.value ? parseFloat((event.target as any).credit.value) : undefined,
+        name: (event.target as any).name.value,
+        // Map frontend account types to backend types
+        type: accountType === "checking" || accountType === "savings" ? "depository" : accountType,
+        balances: {
+          current: parseFloat((event.target as any).balance?.value) || 0,
+          available: parseFloat((event.target as any).balance?.value) || 0,
+          limit: parseFloat((event.target as any).credit?.value) || null,
+          iso_currency_code: 'USD'
+        }
       };
       
       formData.append('accountData', JSON.stringify(accountData));
