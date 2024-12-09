@@ -1,17 +1,21 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 
 export async function POST(
   request: Request,
-  { params }: { params: { accountId: string } }
+  context: { params: Promise<{ accountId: string }> }
 ) {
+  const { accountId } = await context.params;
+
   try {
-    const { accountId } = params;
-    const response = await fetch(`${process.env.BACKEND_URL}/accounts/${accountId}/refresh`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const response = await fetch(
+      `${process.env.BACKEND_URL}/accounts/${accountId}/refresh`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     if (!response.ok) {
       const error = await response.json();
@@ -21,9 +25,9 @@ export async function POST(
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error refreshing account:', error);
+    console.error("Error refreshing account:", error);
     return NextResponse.json(
-      { error: 'Failed to refresh account' },
+      { error: "Failed to refresh account" },
       { status: 500 }
     );
   }

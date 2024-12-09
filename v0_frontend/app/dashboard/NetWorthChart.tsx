@@ -37,10 +37,13 @@ const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     const value = payload[0].value;
     const prevValue = payload[0].payload.previousValue;
-    const change = payload[0].payload.change || (value - prevValue);
-    const percentChange = prevValue !== 0 
-      ? ((change / Math.abs(prevValue)) * 100).toFixed(1)
-      : change > 0 ? '100' : '0';
+    const change = payload[0].payload.change || value - prevValue;
+    const percentChange =
+      prevValue !== 0
+        ? ((change / Math.abs(prevValue)) * 100).toFixed(1)
+        : change > 0
+        ? "100"
+        : "0";
     const date = formatDate(label);
 
     return (
@@ -55,7 +58,8 @@ const CustomTooltip = ({ active, payload, label }) => {
           }`}
         >
           {change >= 0 ? "+" : ""}
-          {formatCurrency(change)} ({change >= 0 ? "+" : ""}{percentChange}%)
+          {formatCurrency(change)} ({change >= 0 ? "+" : ""}
+          {percentChange}%)
         </div>
       </div>
     );
@@ -88,9 +92,7 @@ const NetWorthChart = ({ data = [], timeframe = "1M" }) => {
       <div className="w-full bg-white rounded-xl p-6 shadow-sm">
         <div className="mb-6">
           <div className="font-semibold">Net Worth</div>
-          <h2 className="text-2xl font-semibold">
-            {formatCurrency(0)}
-          </h2>
+          <h2 className="text-2xl font-semibold">{formatCurrency(0)}</h2>
           <div className="text-gray-500">No data available</div>
         </div>
       </div>
@@ -100,9 +102,12 @@ const NetWorthChart = ({ data = [], timeframe = "1M" }) => {
   const latestValue = data[data.length - 1]?.value || 0;
   const previousValue = data[data.length - 2]?.value || latestValue;
   const monthChange = latestValue - previousValue;
-  const monthPercentChange = previousValue !== 0
-    ? ((monthChange / Math.abs(previousValue)) * 100).toFixed(1)
-    : monthChange > 0 ? '100' : '0';
+  const monthPercentChange =
+    previousValue !== 0
+      ? ((monthChange / Math.abs(previousValue)) * 100).toFixed(1)
+      : monthChange > 0
+      ? "100"
+      : "0";
 
   const chartData = data.map((item) => ({
     ...item,
@@ -151,7 +156,15 @@ const NetWorthChart = ({ data = [], timeframe = "1M" }) => {
               width={80}
               tick={{ fill: "#9CA3AF" }}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip
+              content={
+                <CustomTooltip
+                  active={undefined}
+                  payload={undefined}
+                  label={undefined}
+                />
+              }
+            />
             <Line
               type="monotone"
               dataKey="value"

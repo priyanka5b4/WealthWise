@@ -28,7 +28,15 @@ import { X } from "lucide-react";
 import { format } from "date-fns";
 
 // TransactionFilters component
-const TransactionFilters = ({ onFilterChange, onSortChange, searchTerm, onClearSearch, selectedCategory, onCategoryChange, categories }) => {
+const TransactionFilters = ({
+  onFilterChange,
+  onSortChange,
+  searchTerm,
+  onClearSearch,
+  selectedCategory,
+  onCategoryChange,
+  categories,
+}) => {
   return (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 mb-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
@@ -87,7 +95,7 @@ const TransactionItem = ({ transaction }) => {
       const date = new Date(dateString);
       return format(date, "MMM d, yyyy 'at' h:mm a");
     } catch (error) {
-      console.error('Error formatting date:', error);
+      console.error("Error formatting date:", error);
       return dateString; // Return original string if formatting fails
     }
   };
@@ -160,8 +168,11 @@ const TransactionList = ({ transactions }) => {
         <PaginationContent>
           <PaginationItem>
             <PaginationPrevious
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
+              onClick={() => {
+                if (currentPage > 1) {
+                  handlePageChange(currentPage - 1);
+                }
+              }}
             />
           </PaginationItem>
 
@@ -178,8 +189,11 @@ const TransactionList = ({ transactions }) => {
 
           <PaginationItem>
             <PaginationNext
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
+              onClick={() => {
+                if (currentPage < totalPages) {
+                  handlePageChange(currentPage + 1);
+                }
+              }}
             />
           </PaginationItem>
         </PaginationContent>
@@ -286,10 +300,14 @@ export default function TransactionsPage() {
     const sorted = [...filteredTransactions];
     switch (sortOption) {
       case "date-desc":
-        sorted.sort((a, b) => new Date(b.date) - new Date(a.date));
+        sorted.sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
         break;
       case "date-asc":
-        sorted.sort((a, b) => new Date(a.date) - new Date(b.date));
+        sorted.sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
         break;
       case "amount-desc":
         sorted.sort((a, b) => b.amount - a.amount);

@@ -13,7 +13,6 @@ import {
   Trash2,
   Loader2,
   RotateCw,
-  ArrowPath,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,7 +48,7 @@ import QuickStats from "./quickStats";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Account, AccountStatus, AccountType } from "../types/account";
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 
 // Add loading state interface
 interface AccountCardProps {
@@ -66,14 +65,20 @@ const LoadingSpinner = () => (
 
 // Utility functions
 const formatAccountType = (type: string | null) => {
-  if (!type) return 'Unknown';
+  if (!type) return "Unknown";
   return type
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
 };
 
-const AccountIcon = ({ type, className }: { type: AccountType; className?: string }) => {
+const AccountIcon = ({
+  type,
+  className,
+}: {
+  type: AccountType;
+  className?: string;
+}) => {
   const icons = {
     depository: Wallet,
     credit: CreditCard,
@@ -98,10 +103,14 @@ const AccountColor = (type: string) => {
 const AccountHeader = ({ account }: { account: Account }) => {
   const getStatusColor = (status: AccountStatus) => {
     switch (status) {
-      case 'active': return 'text-green-500';
-      case 'inactive': return 'text-yellow-500';
-      case 'closed': return 'text-red-500';
-      default: return 'text-gray-500';
+      case "active":
+        return "text-green-500";
+      case "inactive":
+        return "text-yellow-500";
+      case "closed":
+        return "text-red-500";
+      default:
+        return "text-gray-500";
     }
   };
 
@@ -115,11 +124,14 @@ const AccountHeader = ({ account }: { account: Account }) => {
           <div>
             <CardTitle>{account.name}</CardTitle>
             <CardDescription>
-              {formatAccountType(account.subtype)} {account.mask ? ` (...${account.mask})` : ''}
+              {formatAccountType(account.subtype)}{" "}
+              {account.mask ? ` (...${account.mask})` : ""}
             </CardDescription>
           </div>
         </div>
-        <div className={`text-sm font-medium ${getStatusColor(account.status)}`}>
+        <div
+          className={`text-sm font-medium ${getStatusColor(account.status)}`}
+        >
           {formatAccountType(account.status)}
         </div>
       </div>
@@ -151,9 +163,9 @@ const AccountBalance = ({ balance, change }) => {
 // AccountDetails component
 const AccountDetails = ({ account }) => {
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: account.balances.iso_currency_code || 'USD'
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: account.balances.iso_currency_code || "USD",
     }).format(amount);
   };
 
@@ -172,10 +184,7 @@ const AccountDetails = ({ account }) => {
               label="Current Balance"
               value={formatCurrency(account.balances.current)}
             />
-            <DetailItem
-              label="Income"
-              value={formatCurrency(stats.income)}
-            />
+            <DetailItem label="Income" value={formatCurrency(stats.income)} />
             <DetailItem
               label="Expenses"
               value={formatCurrency(stats.expenses)}
@@ -184,19 +193,24 @@ const AccountDetails = ({ account }) => {
               <>
                 <DetailItem
                   label="Last Transaction Date"
-                  value={new Date(account.statistics.lastTransaction.date).toLocaleDateString()}
+                  value={new Date(
+                    account.statistics.lastTransaction.date
+                  ).toLocaleDateString()}
                 />
                 <DetailItem
                   label="Last Transaction Amount"
-                  value={formatCurrency(account.statistics.lastTransaction.amount)}
+                  value={formatCurrency(
+                    account.statistics.lastTransaction.amount
+                  )}
                 />
               </>
             )}
           </>
         );
       case "credit":
-        const utilization = account.balances.limit ?
-          (account.balances.current / account.balances.limit) * 100 : 0;
+        const utilization = account.balances.limit
+          ? (account.balances.current / account.balances.limit) * 100
+          : 0;
 
         return (
           <>
@@ -210,21 +224,24 @@ const AccountDetails = ({ account }) => {
             />
             <DetailItem
               label="Available Credit"
-              value={formatCurrency((account.balances.limit || 0) - account.balances.current)}
+              value={formatCurrency(
+                (account.balances.limit || 0) - account.balances.current
+              )}
             />
-            <ProgressBar
-              label="Credit Utilization"
-              value={utilization}
-            />
+            <ProgressBar label="Credit Utilization" value={utilization} />
             {account.statistics?.lastTransaction && (
               <>
                 <DetailItem
                   label="Last Transaction Date"
-                  value={new Date(account.statistics.lastTransaction.date).toLocaleDateString()}
+                  value={new Date(
+                    account.statistics.lastTransaction.date
+                  ).toLocaleDateString()}
                 />
                 <DetailItem
                   label="Last Transaction Amount"
-                  value={formatCurrency(account.statistics.lastTransaction.amount)}
+                  value={formatCurrency(
+                    account.statistics.lastTransaction.amount
+                  )}
                 />
               </>
             )}
@@ -283,24 +300,26 @@ const AccountCard = ({ account, onDeleted }: AccountCardProps) => {
   const handleDelete = async () => {
     try {
       setIsDeleting(true);
-      console.log('Account to delete:', account);
+      console.log("Account to delete:", account);
 
       if (!account || !account.account_id) {
-        throw new Error('Invalid account data: Missing account ID');
+        throw new Error("Invalid account data: Missing account ID");
       }
 
       await accountService.deleteAccount(account.account_id);
       setIsDeleted(true);
       toast({
         title: "Account deleted",
-        description: "Account and its transactions have been deleted successfully.",
+        description:
+          "Account and its transactions have been deleted successfully.",
       });
       await onDeleted();
     } catch (error) {
-      console.error('Delete error:', error);
+      console.error("Delete error:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to delete account. Please try again.",
+        description:
+          error.message || "Failed to delete account. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -311,16 +330,18 @@ const AccountCard = ({ account, onDeleted }: AccountCardProps) => {
   const handleRefresh = async () => {
     try {
       setIsRefreshing(true);
-      const { account: updatedAccount, transactionsUpdated } = await accountService.refreshAccount(account.account_id);
+      const { account: updatedAccount, transactionsUpdated } =
+        await accountService.refreshAccount(account.account_id);
       toast({
         title: "Account refreshed",
         description: `Account balance and details have been updated. ${transactionsUpdated} transactions were synced.`,
       });
     } catch (error) {
-      console.error('Refresh error:', error);
+      console.error("Refresh error:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to refresh account. Please try again.",
+        description:
+          error.message || "Failed to refresh account. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -337,22 +358,30 @@ const AccountCard = ({ account, onDeleted }: AccountCardProps) => {
   }
 
   const getBalanceChangeColor = () => {
-    if (!account.balances.previous || account.balances.previous === 0) return "text-gray-600";
-    const change = ((account.balances.current - account.balances.previous) / Math.abs(account.balances.previous)) * 100;
+    if (!account.balances.previous || account.balances.previous === 0)
+      return "text-gray-600";
+    const change =
+      ((account.balances.current - account.balances.previous) /
+        Math.abs(account.balances.previous)) *
+      100;
     return change >= 0 ? "text-green-600" : "text-red-600";
   };
 
   const calculateBalanceChange = () => {
     if (!account.balances.previous || account.balances.previous === 0) return 0;
-    return ((account.balances.current - account.balances.previous) / Math.abs(account.balances.previous)) * 100;
+    return (
+      ((account.balances.current - account.balances.previous) /
+        Math.abs(account.balances.previous)) *
+      100
+    );
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: account.balances.iso_currency_code || 'USD',
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: account.balances.iso_currency_code || "USD",
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      maximumFractionDigits: 2,
     }).format(Math.abs(amount || 0));
   };
 
@@ -360,11 +389,15 @@ const AccountCard = ({ account, onDeleted }: AccountCardProps) => {
     const statusColors = {
       active: "bg-green-500",
       inactive: "bg-yellow-500",
-      closed: "bg-red-500"
+      closed: "bg-red-500",
     };
     return (
       <div className="flex items-center space-x-1">
-        <div className={`w-2 h-2 rounded-full ${statusColors[account.status] || "bg-gray-500"}`} />
+        <div
+          className={`w-2 h-2 rounded-full ${
+            statusColors[account.status] || "bg-gray-500"
+          }`}
+        />
         <span className="text-sm capitalize text-muted-foreground">
           {account.status}
         </span>
@@ -377,7 +410,7 @@ const AccountCard = ({ account, onDeleted }: AccountCardProps) => {
       {
         label: "View Transactions",
         icon: <TrendingUp className="w-4 h-4" />,
-        onClick: handleViewTransactions
+        onClick: handleViewTransactions,
       },
       {
         label: "Refresh",
@@ -387,8 +420,8 @@ const AccountCard = ({ account, onDeleted }: AccountCardProps) => {
           <RotateCw className="w-4 h-4" />
         ),
         onClick: handleRefresh,
-        disabled: isRefreshing
-      }
+        disabled: isRefreshing,
+      },
     ];
 
     return (
@@ -412,8 +445,16 @@ const AccountCard = ({ account, onDeleted }: AccountCardProps) => {
 
   return (
     <Card className="group relative overflow-hidden transition-all duration-200 hover:shadow-lg">
-      <div className={`absolute inset-x-0 h-1 top-0 ${account.type === "credit" ? "bg-purple-500" : account.type === "investment" ? "bg-green-500" : "bg-blue-500"}`} />
-      
+      <div
+        className={`absolute inset-x-0 h-1 top-0 ${
+          account.type === "credit"
+            ? "bg-purple-500"
+            : account.type === "investment"
+            ? "bg-green-500"
+            : "bg-blue-500"
+        }`}
+      />
+
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -424,7 +465,11 @@ const AccountCard = ({ account, onDeleted }: AccountCardProps) => {
               <CardTitle className="line-clamp-1">{account.name}</CardTitle>
               <CardDescription className="flex items-center space-x-2">
                 <span>{formatAccountType(account.subtype)}</span>
-                {account.mask && <span className="text-muted-foreground">•••• {account.mask}</span>}
+                {account.mask && (
+                  <span className="text-muted-foreground">
+                    •••• {account.mask}
+                  </span>
+                )}
               </CardDescription>
             </div>
           </div>
@@ -439,7 +484,9 @@ const AccountCard = ({ account, onDeleted }: AccountCardProps) => {
               <div className="text-2xl font-bold tracking-tight">
                 {formatCurrency(account.balances.current)}
               </div>
-              <div className={`flex items-center space-x-1 ${getBalanceChangeColor()}`}>
+              <div
+                className={`flex items-center space-x-1 ${getBalanceChangeColor()}`}
+              >
                 {calculateBalanceChange() >= 0 ? (
                   <TrendingUp className="w-4 h-4" />
                 ) : (
@@ -454,10 +501,18 @@ const AccountCard = ({ account, onDeleted }: AccountCardProps) => {
               <div className="mt-2">
                 <div className="flex justify-between text-sm text-muted-foreground mb-1">
                   <span>Credit Used</span>
-                  <span>{((account.balances.current / account.balances.limit) * 100).toFixed(0)}%</span>
+                  <span>
+                    {(
+                      (account.balances.current / account.balances.limit) *
+                      100
+                    ).toFixed(0)}
+                    %
+                  </span>
                 </div>
-                <Progress 
-                  value={(account.balances.current / account.balances.limit) * 100}
+                <Progress
+                  value={
+                    (account.balances.current / account.balances.limit) * 100
+                  }
                   className="h-2"
                 />
               </div>
@@ -532,8 +587,9 @@ const AccountCard = ({ account, onDeleted }: AccountCardProps) => {
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete Account</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Are you sure you want to delete this account? This will also delete all associated transactions.
-                  This action cannot be undone.
+                  Are you sure you want to delete this account? This will also
+                  delete all associated transactions. This action cannot be
+                  undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -573,7 +629,7 @@ export default function AccountsPage() {
       console.log("New accounts fetched", response);
       setAccounts(response);
     } catch (error) {
-      console.error('Error fetching accounts:', error);
+      console.error("Error fetching accounts:", error);
       toast({
         title: "Error",
         description: "Failed to fetch accounts. Please try again.",
@@ -601,7 +657,7 @@ export default function AccountsPage() {
     await fetchAccounts();
   };
 
-  const filteredAccounts = accounts.filter(account => {
+  const filteredAccounts = accounts.filter((account) => {
     if (filter === "all") return true;
     return account.type === filter;
   });
@@ -620,12 +676,13 @@ export default function AccountsPage() {
   });
 
   const groupedAccounts = sortedAccounts.reduce((groups, account) => {
-    const key = groupBy === "institution" 
-      ? (account.institution?.name || "Other")
-      : groupBy === "type" 
-        ? account.type 
+    const key =
+      groupBy === "institution"
+        ? account.institution?.name || "Other"
+        : groupBy === "type"
+        ? account.type
         : "all";
-    
+
     if (!groups[key]) {
       groups[key] = [];
     }
@@ -667,10 +724,20 @@ export default function AccountsPage() {
           <Wallet className="w-6 h-6 text-primary" />
         </div>
         <CardTitle className="mt-4">No accounts found</CardTitle>
-        <CardDescription>Get started by connecting your first account</CardDescription>
+        <CardDescription>
+          Get started by connecting your first account
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <Button className="mt-4" onClick={() => toast({ title: "Coming soon!", description: "Account connection feature will be available soon." })}>
+        <Button
+          className="mt-4"
+          onClick={() =>
+            toast({
+              title: "Coming soon!",
+              description: "Account connection feature will be available soon.",
+            })
+          }
+        >
           <Plus className="mr-2 h-4 w-4" /> Connect Account
         </Button>
       </CardContent>
